@@ -2,44 +2,61 @@ import cv2
 
 def mo_video(duong_dan_video):
     """
-    Hàm mở video từ ổ cứng.
-    Tiếp tục sử dụng OpenCV để đọc video và trả về đối tượng VideoCapture cho các bước xử lý tiếp theo.
+    Mở video
     """
     cap = cv2.VideoCapture(duong_dan_video)
 
     if not cap.isOpened():
-        print(f"Lỗi: Không thể mở video tại '{duong_dan_video}'!")
-        return None
-        
+        raise ValueError(f"Lỗi: Không thể mở video tại '{duong_dan_video}'!")
+
     return cap
 
-# --- ĐOẠN CODE DƯỚI ĐÂY SẼ CHỈ CHẠY KHI BẠN TỰ TEST FILE NÀY ---
+
+# ========================
+# LẤY FRAME (QUAN TRỌNG)
+# ========================
+def lay_frame(cap):
+    ret, frame = cap.read()
+
+    if not ret:
+        return None
+
+    return frame
+
+
+# ========================
+# RESIZE GIỮ TỈ LỆ
+# ========================
+def resize_keep_ratio(img, width=800):
+    h, w = img.shape[:2]
+    scale = width / w
+    new_h = int(h * scale)
+
+    return cv2.resize(img, (width, new_h))
+
+
+# ========================
+# TEST VIDEO
+# ========================
 if __name__ == "__main__":
     duong_dan = 'du_lieu/video_test.mp4'
     cap_test = mo_video(duong_dan)
-    
-    if cap_test is not None:
-        print("Mở video thành công! Đang phát... (Bấm 'q' để thoát)")
-        
-        while True:
-            # Đọc frame nguyên bản (frame này sẽ được Nam dùng)
-            ret, frame = cap_test.read() 
-            
-            if not ret:
-                print("Đã phát hết video.")
-                break
-                
-            # --- CÁCH SỬA LỖI VIDEO TO QUÁ MỨC ---
-            # Tạo một bản sao 'frame_preview' thu nhỏ chỉ để xem trên màn hình
-            chieu_rong_moi = 800
-            chieu_cao_moi = 600
-            frame_preview = cv2.resize(frame, (chieu_rong_moi, chieu_cao_moi))
-            
-            # Hiển thị bản đã thu nhỏ
-            cv2.imshow('Kiem tra Input Video (Preview)', frame_preview)
-            
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
-                
-        cap_test.release()
-        cv2.destroyAllWindows()
+
+    print("Mở video thành công! (Bấm 'q' để thoát)")
+
+    while True:
+        frame = lay_frame(cap_test)
+
+        if frame is None:
+            print("Đã phát hết video.")
+            break
+
+        frame_preview = resize_keep_ratio(frame)
+
+        cv2.imshow('Preview Video', frame_preview)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap_test.release()
+    cv2.destroyAllWindows()
