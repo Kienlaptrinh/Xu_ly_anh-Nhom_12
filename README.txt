@@ -1,0 +1,3 @@
+-để sử dung model thì tìm folder có tên train sau này tôi sẽ up them các folder train cải tiến sau
+-vào train > weights > đến file best.pt  chuột phải copy as path để lấy đường dẫn
+-sau đó vào file .py dán đường dẫn vào phần model để sử dụng
