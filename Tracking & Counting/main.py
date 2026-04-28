@@ -13,6 +13,9 @@ line_y = 360  # Vị trí vạch đếm (có thể điều chỉnh)
 total_count = 0
 counted_ids = set()
 
+# --- BIẾN ĐỂ ĐÁNH GIÁ (EVALUATION) ---
+real_count = 10 # Số lượng người thực tế tự đếm để so sánh
+
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret: break
@@ -26,7 +29,7 @@ while cap.isOpened():
         boxes = r.boxes.xyxy.cpu().numpy()
         for box in boxes:
             rects.append(box.astype("int"))
-            # Vẽ bounding box (Nhiệm vụ Visualization)
+            # Vẽ bounding box 
             cv2.rectangle(frame, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 1)
 
     # 4. Chạy Tracking 
@@ -48,8 +51,24 @@ while cap.isOpened():
     cv2.putText(frame, f"Count: {total_count}", (20, 50), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
 
+    # --- TRANG TRÍ BẢNG THỐNG KÊ  ---
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (15, 60), (200, 110), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+    cv2.putText(frame, f"Status: Tracking", (25, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+    cv2.putText(frame, f"MAE: {abs(real_count - total_count)}", (25, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
     cv2.imshow("Tracking & Counting", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'): break
 
 cap.release()
 cv2.destroyAllWindows()
+
+# ---  IN BÁO CÁO ĐÁNH GIÁ (EVALUATION REPORT) ---
+print("\n--- KẾT QUẢ ĐÁNH GIÁ ---")
+mae = abs(real_count - total_count)
+accuracy = (1 - mae/real_count)*100 if real_count > 0 else 0
+print(f"Số người thực tế: {real_count}")
+print(f"Số người AI đếm: {total_count}")
+print(f"Sai số tuyệt đối (MAE): {mae}")
+print(f"Độ chính xác: {accuracy:.2f}%")
