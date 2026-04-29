@@ -1,2 +1,9 @@
-opencv-pyhon
+opencv-python
 numpy
+scipy
+ultralytics
+torch
+torchvision
+matplotlib
+pandas
+PyYAML
