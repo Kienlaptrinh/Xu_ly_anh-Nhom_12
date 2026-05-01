@@ -1,89 +1,76 @@
 import cv2
-import sys
-import os
-
-# ========================
-# GAUSSIAN BLUR
-# ========================
-def gaussian_blur(img, ksize=(5, 5)):
-    return cv2.GaussianBlur(img, ksize, 0)
+import numpy as np
 
 
-# ========================
-# HISTOGRAM EQUALIZATION (toàn cục)
-# ========================
-def histogram_equalization_gray(gray_img):
-    return cv2.equalizeHist(gray_img)
+def gaussian_blur(img, ksize=(5, 5), sigma=0):
+    return cv2.GaussianBlur(img, ksize, sigma)
 
 
-# ========================
-# CLAHE - Histogram Equalization cục bộ (khuyến nghị)
-# ========================
-def clahe_equalization(gray_img):
-    """Cân bằng histogram cục bộ — hiệu quả hơn cho video đám đông"""
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    return clahe.apply(gray_img)
-
-
-# ========================
-# CHUYỂN GRAY
-# ========================
 def to_gray(img):
     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
-# ========================
-# RESIZE GIỮ TỈ LỆ
-# ========================
+def clahe_equalization(gray_img, clip_limit=2.0, tile_size=(8, 8)):
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_size)
+    return clahe.apply(gray_img)
+
+
+def canny_edge(gray_img, low=50, high=150):
+    return cv2.Canny(gray_img, low, high)
+
+
 def resize_keep_ratio(img, width=800):
     h, w = img.shape[:2]
+    if w == width:
+        return img
     scale = width / w
-    new_h = int(h * scale)
-    return cv2.resize(img, (width, new_h))
+    return cv2.resize(img, (width, int(h * scale)), interpolation=cv2.INTER_LINEAR)
 
 
-# ========================
-# PIPELINE PREPROCESS
-# ========================
+def normalize_frame(img):
+    return img.astype(np.float32) / 255.0
+
+
 def preprocess_frame(frame):
     """
-    Trả về:
-    - gray_eq: ảnh grayscale đã xử lý (dùng cho HOG, segmentation)
-    - frame_resized: ảnh màu (dùng cho YOLO)
+    Pipeline tiền xử lý (Ch.2):
+      B1: Resize giữ tỉ lệ
+      B2: Gaussian Blur — giảm nhiễu
+      B3: Grayscale
+      B4: CLAHE — cân bằng sáng cục bộ (hiệu quả hơn equalizeHist cho cảnh đám đông)
+      B5: Canny — phát hiện cạnh (Ch.3), hỗ trợ segmentation
+
+    Returns:
+        gray_eq      : grayscale + CLAHE  → HOG, MOG2
+        edge_map     : Canny edges        → segmentation
+        frame_resized: ảnh màu            → YOLO
     """
-    frame_resized = resize_keep_ratio(frame)
-    blurred = gaussian_blur(frame_resized)
-    gray = to_gray(blurred)
-    gray_eq = clahe_equalization(gray)  # CLAHE thay vì equalizeHist
-    return gray_eq, frame_resized
+    frame_resized = resize_keep_ratio(frame, width=800)
+    blurred       = gaussian_blur(frame_resized, ksize=(5, 5))
+    gray          = to_gray(blurred)
+    gray_eq       = clahe_equalization(gray)
+    edge_map      = canny_edge(gray_eq, low=50, high=150)
+    return gray_eq, edge_map, frame_resized
 
 
-# ========================
-# TEST
-# ========================
 if __name__ == "__main__":
+    import os, sys
     sys.path.append(os.path.dirname(__file__))
     from video_reader import mo_video, lay_frame
 
-    # Đường dẫn tuyệt đối tính từ vị trí file này (src/)
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    video_path = os.path.join(BASE_DIR, "data", "videos", "video2.mp4")
+    BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    video_path = os.path.join(BASE_DIR, "data", "videos", "video3.mp4")
 
     cap = mo_video(video_path)
-
     while True:
         frame = lay_frame(cap)
         if frame is None:
             break
-
-        gray_eq, color = preprocess_frame(frame)
-
-        cv2.imshow("Original", resize_keep_ratio(frame))
-        cv2.imshow("Gray + CLAHE", gray_eq)
-        cv2.imshow("Color (for YOLO)", color)
-
+        gray_eq, edge_map, color = preprocess_frame(frame)
+        cv2.imshow("Original (resized)", color)
+        cv2.imshow("Gray + CLAHE",       gray_eq)
+        cv2.imshow("Canny Edges (Ch.3)", edge_map)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
     cap.release()
     cv2.destroyAllWindows()
