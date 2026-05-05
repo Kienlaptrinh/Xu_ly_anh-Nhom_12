@@ -1,0 +1,10 @@
+# 1. Đường dẫn gốc đến thư mục data
+path: 'C:/Users/vinh/Desktop/mo hinh yolo/data' 
+
+# 2. Đường dẫn tương đối tính từ 'path' ở trên
+# Nếu cấu trúc là data/train/images thì viết như sau:
+train: train/images  
+val: val/images    
+# 3. Thông tin lớp
+nc: 1
+names: ['person']
